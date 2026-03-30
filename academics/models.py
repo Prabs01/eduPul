@@ -1,4 +1,5 @@
 from django.db import models
+from accounts.models import User
 
 # Create your models here.
 
@@ -31,6 +32,8 @@ class Student(models.Model):
     admission_year = models.IntegerField()
 
     program = models.ForeignKey(Program, on_delete=models.CASCADE)
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.roll_no
@@ -69,6 +72,9 @@ class CourseEnrollment(models.Model):
     enrollment_date = models.DateField()
     grade = models.CharField(max_length=2, null=True, blank=True)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -85,7 +91,16 @@ class Attendance(models.Model):
     enrollment = models.ForeignKey(CourseEnrollment, on_delete=models.CASCADE)
 
     date = models.DateField()
-    status = models.CharField(max_length=10)  # Present / Absent
+
+    STATUS_CHOICES = [
+        ('P', 'Present'),
+        ('A', 'Absent'),
+        ('L', 'Late'),
+    ]
+
+    status = models.CharField(max_length=1,choices=STATUS_CHOICES)  # Present / Absent
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
@@ -107,6 +122,8 @@ class Faculty(models.Model):
     designation = models.CharField(max_length=50)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
 
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
     def __str__(self):
         return self.name
     
@@ -115,6 +132,9 @@ class TeachingAssignment(models.Model):
     offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE)
 
     role = models.CharField(max_length=50)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
