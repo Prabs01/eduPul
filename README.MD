@@ -5,10 +5,10 @@ EduPul is a Django-based Academic Management System backend designed to manage c
 ## Project Structure
 
 eduPul/
-├── accounts/ # Authentication & user roles
-├── academics/ # Core academic system
-├── eduPul/ # Project settings
-├── manage.py
+- ├── accounts/ # Authentication & user roles
+- ├── academics/ # Core academic system
+- ├── eduPul/ # Project settings
+- ├── manage.py
 
 ## User Roles
 
