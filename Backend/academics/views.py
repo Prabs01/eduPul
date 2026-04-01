@@ -2,8 +2,8 @@ from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from .serializers import DepartmentSerializer, ProgramSerializer, CourseSerializer
-from .models import Department,Program, Course
+from .serializers import DepartmentSerializer, ProgramSerializer, CourseSerializer, CourseOfferingSerializer
+from .models import Department,Program, Course, CourseOffering
 from accounts.permissions import IsAdminOrReadOnly
 
 
@@ -25,3 +25,8 @@ class CourseViewSet(ModelViewSet):
     serializer_class = CourseSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+
+class CourseOfferingViewSet(ModelViewSet):
+    queryset = CourseOffering.objects.all()
+    serializer_class = CourseOfferingSerializer
+    #permission_classes = [IsAdminOrReadOnly]

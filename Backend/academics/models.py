@@ -49,6 +49,7 @@ class Course(models.Model):
     
 class CourseOffering(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
 
     semester = models.CharField(max_length=20)
     academic_year = models.IntegerField()
