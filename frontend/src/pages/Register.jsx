@@ -1,30 +1,49 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { registerUser } from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import { registerUser } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 function Register() {
+  const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ important
+
   const [form, setForm] = useState({
     username: "",
-    email: "",
     password: "",
-    role: "Student", // default role
+    role: "STUDENT",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       const data = await registerUser(form);
-      console.log("Register response:", data);
-    } catch (error) {
-      console.error("Register error:", error);
+  
+      login(data);
+
+      const role = data.user?.role;
+
+      if (role === "STUDENT") navigate("/student/dashboard");
+      else if (role === "FACULTY") navigate("/faculty/dashboard");
+      else navigate("/");
+
+    } catch (err) {
+      setError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Registration failed"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,14 +60,6 @@ function Register() {
         />
 
         <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          onChange={handleChange}
-          required
-        />
-
-        <input
           name="password"
           type="password"
           placeholder="Password"
@@ -56,18 +67,17 @@ function Register() {
           required
         />
 
-        <select
-        name="role"
-        onChange={handleChange}
-        required
-        >
-        <option value="">Select Role</option>
-        <option value="STUDENT">Student</option>
-        <option value="FACULTY">Faculty</option>
+        <select name="role" onChange={handleChange} value={form.role}>
+          <option value="STUDENT">Student</option>
+          <option value="FACULTY">Faculty</option>
         </select>
 
-        <button type="submit">Register</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Registering..." : "Register"}
+        </button>
       </form>
+
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <p>
         Already have an account? <Link to="/">Login</Link>

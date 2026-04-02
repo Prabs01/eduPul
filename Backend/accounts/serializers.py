@@ -26,36 +26,36 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        user = self.user
 
-        data['role'] = user.role
+        # attach user dynamically
+        user = None
 
-        # attach profile dynamically
-        profile = None
-
-        if user.role == "STUDENT":
+        if self.user.role == "STUDENT":
             try:
-                s = Student.objects.get(user=user)
-                profile = {
+                s = Student.objects.get(user=self.user)
+                user = {
                     "id": s.id,
                     "roll_no": s.roll_no,
                     "name": s.name,
+                    "email": s.email,
+                    "role": "STUDENT",
                 }
             except Student.DoesNotExist:
-                profile = None
+                user = None
 
-        elif user.role == "FACULTY":
+        elif user == "FACULTY":
             try:
-                f = Faculty.objects.get(user=user)
-                profile = {
+                f = Faculty.objects.get(user=self.user)
+                user = {
                     "id": f.id,
                     "name": f.name,
                     "email": f.email,
+                    "role": "FACULTY",
                 }
             except Faculty.DoesNotExist:
-                profile = None
+                user = None
 
-        data["profile"] = profile
+        data["user"] = user
 
         return data
     

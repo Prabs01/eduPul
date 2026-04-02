@@ -1,35 +1,54 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { loginUser } from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import { loginUser } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ IMPORTANT
+
   const [form, setForm] = useState({
     username: "",
     password: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       const data = await loginUser(form);
 
-      console.log("Login response:", data);
+      // ❌ REMOVE all localStorage logic from here
+      // ✔ let AuthContext handle it
+      login(data);
+      
 
-      // store token (later)
-      if (data.access) {
-        localStorage.setItem("token", data.access);
-      }
 
-    } catch (error) {
-      console.error("Login error:", error);
+      const role = data.user?.role;
+
+      console.log("Logged in as:", role);
+
+      if (role === "STUDENT") navigate("/student/dashboard", { replace: true });
+      else if (role === "FACULTY") navigate("/faculty/dashboard", { replace: true });
+  
+    } catch (err) {
+      // better fallback for API errors
+      setError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Login failed"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,8 +72,12 @@ function Login() {
           required
         />
 
-        <button type="submit">Login</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
       </form>
+
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <p>
         Don't have an account? <Link to="/register">Register</Link>
