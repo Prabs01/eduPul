@@ -3,6 +3,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.views import APIView
 from .serializers import DepartmentSerializer, ProgramSerializer, CourseSerializer,CourseOfferingSerializer, CourseEnrollmentSerializer, StudentSerializer, FacultySerializer, TeachingAssignmentSerializer
 from . import serializers
 from .models import Department,Program, Course, CourseOffering, CourseEnrollment, TeachingAssignment, Student, Faculty, Attendance
@@ -58,7 +59,11 @@ class CourseEnrollmentViewSet(ModelViewSet):
         if user.role != "STUDENT":
             raise PermissionDenied("Only students can enroll in courses.") #Only Student can enroll in courses
         
-        student = user.student
+        if hasattr(user, "student"):
+            student = user.student
+        else:
+            raise PermissionDenied("Student profile not found.")
+        
         offering = serializer.validated_data["offering"]
 
         if student.program != offering.program:
@@ -71,8 +76,6 @@ class CourseEnrollmentViewSet(ModelViewSet):
             student=student,
             enrollment_date=date.today()
         )
-
-
     
 class StudentView(ModelViewSet):
     queryset = Student.objects.all()
@@ -219,4 +222,156 @@ class AttendanceViewSet(ModelViewSet):
 
             return Response(result)
 
+        
+class StudentDashboardAPIView(APIView):
+    permmission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "STUDENT":
+            raise PermissionDenied("Only students can access the dashboard.")
+        
+        student = user.student
+
+        enrollments = CourseEnrollment.objects.filter(student=student)
+
+        courses = [
+            {
+                "offering_id": e.offering.id,
+                "course_title": e.offering.course.title,
+            }
+            for e in enrollments
+        ]
+
+        attendance_qs = Attendance.objects.filter(enrollment__student=student).values(
+            "enrollment__offering",
+            "enrollment__offering__course__title"
+        ).annotate(
+            total=Count("id"),
+            present=Count("id", filter=Q(status="P")),
+            late=Count("id", filter=Q(status="L")),
+            absent=Count("id", filter=Q(status="A"))
+        )
+
+        attendance_summary = []
+
+        for item in attendance_qs:
+            total = item["total"]
+            present = item["present"]
+            late = item["late"]
+            absent = item["absent"]
+
+            effective_present = present + late
+
+            percentage = (effective_present / total) * 100 if total > 0 else 0
+
+            attendance_summary.append({
+                "offering": item["enrollment__offering"],
+                "course_title": item["enrollment__offering__course__title"],
+                "present": present,
+                "late": late,
+                "absent": absent,
+                "total": total,
+                "percentage": round(percentage, 2)
+            })
+
+        warnings = []
+
+        for item in attendance_summary:
+            if item["percentage"] < 75:
+                warnings.append(f"Attendance for {item['course_title']} is below 75% ({item['percentage']}%).")
+
+        return Response({
+            "student": {
+                "id": student.id,
+                "name": student.user.username,
+                "program": student.program.name
+            },
+            "enrolled_courses": courses,
+            "attendance_summary": attendance_summary,
+            "warnings": warnings
+        })
+
+
+class FacultyDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        user = request.user
+
+        if user.role != "FACULTY":
+            raise PermissionDenied("Only faculty can access the dashboard.")
+        
+        faculty = user.faculty
+
+        assignments = TeachingAssignment.objects.filter(faculty=faculty)
+        offering_ids = assignments.values_list("offering_id", flat=True)
+
+        total_courses = assignments.count()
+
+        total_students = CourseEnrollment.objects.filter(
+            offering_id__in=offering_ids
+        ).values("student").distinct().count()
+
+        course_data = []
+
+        for offering_id in offering_ids:
+            enrollments = CourseEnrollment.objects.filter(offering_id=offering_id)
+
+            attendance_qs = Attendance.objects.filter(
+                enrollment__offering_id=offering_id
+            )
+
+            total = attendance_qs.count()
+
+            present = attendance_qs.filter(status="P").count()
+            late = attendance_qs.filter(status="L").count()
+
+            avg_attendance = ((present + late) / total * 100) if total else 0
+
+            course_data.append({
+                "offering_id": offering_id,
+                "total_students": enrollments.count(),
+                "avg_attendance": round(avg_attendance, 2)
+            })
+
+            at_risk_students = []
+
+            students = CourseEnrollment.objects.filter(
+                offering_id__in=offering_ids
+            ).values_list("student", flat=True).distinct()
+
+            for student_id in students:
+                attendance_qs = Attendance.objects.filter(
+                    enrollment__student_id=student_id,
+                    enrollment__offering_id__in=offering_ids
+                )
+
+                total = attendance_qs.count()
+                present = attendance_qs.filter(status="P").count()
+                late = attendance_qs.filter(status="L").count()
+
+                percentage = ((present + late) / total * 100) if total else 0
+
+                if percentage < 75:
+                    student = Student.objects.get(id=student_id)
+
+                    at_risk_students.append({
+                        "student": student.user.username,
+                        "attendance": round(percentage, 2)
+                    })
+
+            return Response({
+                "faculty": {
+                    "id": faculty.id,
+                    "name": faculty.user.username
+                },
+                "teaching_overview": {
+                    "total_courses": total_courses,
+                    "total_students": total_students,
+                },
+                "courses": course_data,
+                "at_risk_students": at_risk_students,
+            })
         

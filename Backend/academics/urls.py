@@ -14,5 +14,8 @@ router.register('faculties', views.FacultyView, basename = "faculties")
 router.register('teaching-assignments', views.TeachingAssignmentViewSet, basename = "teaching-assignments")
 router.register('attendances', views.AttendanceViewSet, basename = "attendances")
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path('student/dashboard/', views.StudentDashboardAPIView.as_view(), name='student-dashboard'),
+    path('faculty/dashboard/', views.FacultyDashboardAPIView.as_view(), name='faculty-dashboard'),
+]
 
