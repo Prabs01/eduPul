@@ -11,3 +11,15 @@ class IsAdminOrReadOnly(BasePermission):
             request.user.is_authenticated and 
             request.user.role == "ADMIN"
         )
+    
+class IsStudentOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        # Allow GET, HEAD, OPTIONS for everyone
+        if request.method in SAFE_METHODS:
+            return True
+        
+        # Only students can modify
+        return (
+            request.user.is_authenticated and 
+            request.user.role == "STUDENT"
+        )

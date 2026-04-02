@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import User
+from datetime import date
 
 # Create your models here.
 
@@ -91,7 +92,7 @@ class CourseEnrollment(models.Model):
 class Attendance(models.Model):
     enrollment = models.ForeignKey(CourseEnrollment, on_delete=models.CASCADE)
 
-    date = models.DateField()
+    date = models.DateField(default=date.today)
 
     STATUS_CHOICES = [
         ('P', 'Present'),
