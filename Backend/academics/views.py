@@ -9,6 +9,9 @@ from .models import Department,Program, Course, CourseOffering, CourseEnrollment
 from accounts.permissions import IsAdminOrReadOnly, IsStudentOrReadOnly
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Count, Q  
 
 
 # Create your views here.
@@ -131,3 +134,89 @@ class AttendanceViewSet(ModelViewSet):
         
         else:
             return Attendance.objects.all()
+        
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        queryset = self.get_queryset()
+
+        if request.user.role == "STUDENT":
+            summary = queryset.values(
+            "enrollment__offering",
+            "enrollment__offering__course__title"
+            ).annotate(
+                total=Count("id"),
+                present=Count("id", filter=Q(status="P")),
+                late=Count("id", filter=Q(status="L")),
+                absent=Count("id", filter=Q(status="A"))
+            )
+
+            result = []
+
+            for item in summary:
+                total = item["total"]
+                present = item["present"]
+
+                late = item["late"]
+                absent = item["absent"]
+
+                effective_present = present + late
+
+                percentage = (effective_present / total) * 100 if total > 0 else 0
+
+                result.append({
+                    "offering": item["enrollment__offering"],
+                    "course_title": item["enrollment__offering__course__title"],
+                    "present":present,
+                    "late": late,
+                    "absent": absent,
+                    "total":total,
+                    "percentage": round(percentage, 2)
+                })
+
+            return Response(result)
+
+        elif request.user.role == "FACULTY":
+            summary = queryset.values(
+                "enrollment__student",
+                "enrollment__student__user__username",
+                "enrollment__offering",
+                "enrollment__offering__course__title"
+            ).annotate(
+                total=Count("id"),
+                present=Count("id", filter=Q(status="P")),
+                late=Count("id", filter=Q(status="L")),
+                absent=Count("id", filter=Q(status="A"))
+            )
+
+            result = []
+
+            for item in summary:
+                student = item["enrollment__student"]
+                student_name = item["enrollment__student__user__username"]
+                offering = item["enrollment__offering"]
+                course = item["enrollment__offering__course__title"]
+
+                total = item["total"]
+                present = item["present"]
+                late = item["late"]
+                absent = item["absent"]
+
+                effective_present = present + late
+
+                percentage = (effective_present / total) * 100 if total > 0 else 0
+
+                result.append({
+                    "student": student,
+                    "student_name": student_name,
+                    "offering": offering,
+                    "course": course,
+                    "present": present,
+                    "late": late,
+                    "absent": absent,
+                    "total": total,
+                    "percentage": round(percentage, 2)
+                })
+
+            return Response(result)
+
+        
