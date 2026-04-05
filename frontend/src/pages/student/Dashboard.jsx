@@ -42,85 +42,110 @@ function StudentDashboard() {
   if (loading) return <p>Loading...</p>;
 
   const student = profile?.student;
+  const courseCount = student?.enrollments?.length || 0;
+  const attendanceCount = attendanceSummary.length || 0;
 
   return (
-    <div style={styles.container}>
-      <h1>Student Dashboard</h1>
+    <div className="app-page stack">
+      <header className="page-header surface" style={{ padding: 24 }}>
+        <div className="page-title">
+          <div className="page-kicker">Student dashboard</div>
+          <h1>Welcome back, {student?.name || profile?.username}</h1>
+          <p className="page-subtitle">
+            Track your courses and attendance progress from one place.
+          </p>
+        </div>
 
-      {/* ACCOUNT */}
-      <div style={styles.card}>
-        <h3>👤 My Account</h3>
-        <p><b>Username:</b> {profile?.username}</p>
-        <p><b>Name:</b> {student?.name}</p>
-        <p><b>Email:</b> {student?.email}</p>
-        <p><b>Program:</b> {student?.program}</p>
-      </div>
+        <div className="metric-grid" style={{ minWidth: "min(100%, 420px)" }}>
+          <div className="metric-card">
+            <div className="metric-label">Courses</div>
+            <div className="metric-value">{courseCount}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Attendance items</div>
+            <div className="metric-value">{attendanceCount}</div>
+          </div>
+        </div>
+      </header>
 
-      {/* COURSES */}
-      <div style={styles.box}>
-        <h3>📚 My Courses</h3>
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">My account</div>
+          <h2>Profile</h2>
+        </div>
+
+        <div className="metric-grid">
+          <div className="metric-card">
+            <div className="metric-label">Username</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{profile?.username}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Email</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{student?.email}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Program</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{student?.program}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">My courses</div>
+          <h2>Enrolled classes</h2>
+        </div>
 
         {student?.enrollments?.length > 0 ? (
-          student.enrollments.map((e) => (
-            <div key={e.id}>
-              <p>
-                {e.course} — {e.semester}
-              </p>
-            </div>
-          ))
+          <div className="course-grid">
+            {student.enrollments.map((enrollment) => (
+              <div key={enrollment.id} className="course-card">
+                <div className="course-meta">
+                  <strong>{enrollment.course}</strong>
+                  <span className="muted">Semester {enrollment.semester}</span>
+                </div>
+                <span className="chip">{enrollment.section || "All sections"}</span>
+              </div>
+            ))}
+          </div>
         ) : (
-          <p>No enrollments</p>
+          <div className="empty-state">No enrollments found.</div>
         )}
-      </div>
+      </section>
 
-      {/* ATTENDANCE SUMMARY */}
-      <div style={styles.box}>
-        <h3>📊 Attendance Summary</h3>
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">Attendance</div>
+          <h2>Summary</h2>
+        </div>
 
         {attendanceSummary.length > 0 ? (
-          attendanceSummary.map((item) => (
-            <div key={item.offering} style={styles.attCard}>
-              <p><b>{item.course_title}</b></p>
+          <div className="summary-grid">
+            {attendanceSummary.map((item) => (
+              <div key={item.offering} className="summary-card">
+                <div className="summary-meta">
+                  <strong>{item.course_title}</strong>
+                  <span className="muted">Offering {item.offering}</span>
+                  <div className="status-row">
+                    <span className="chip success">Present {item.present}</span>
+                    <span className="chip">Late {item.late}</span>
+                    <span className="chip danger">Absent {item.absent}</span>
+                  </div>
+                </div>
 
-              <p>Present: {item.present}</p>
-              <p>Late: {item.late}</p>
-              <p>Absent: {item.absent}</p>
-              <p>Total: {item.total}</p>
-
-              <h4>Attendance: {item.percentage}%</h4>
-            </div>
-          ))
+                <div className="metric-card" style={{ minWidth: 140, textAlign: "center" }}>
+                  <div className="metric-label">Attendance</div>
+                  <div className="metric-value">{item.percentage}%</div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
-          <p>No attendance data</p>
+          <div className="empty-state">No attendance data available yet.</div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: { padding: "20px" },
-
-  card: {
-    background: "#f5f5f5",
-    padding: "15px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-  },
-
-  box: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-  },
-
-  attCard: {
-    background: "#f2f2f2",
-    padding: "12px",
-    marginBottom: "10px",
-    borderRadius: "8px",
-  },
-};
 
 export default StudentDashboard;

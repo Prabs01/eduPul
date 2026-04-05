@@ -10,23 +10,27 @@ function AttendancePage() {
   const [students, setStudents] = useState([]);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const data = await getCourseDetail(id, token, logout);
-      setStudents(data.students || []);
-
-      // default all present
-      setRecords(
-        data.students.map((s) => ({
-          enrollment: s.enrollment_id,
-          status: "P",
-        }))
-      );
+      try {
+        const data = await getCourseDetail(id, token, logout);
+        const courseStudents = data.students || [];
+        setStudents(courseStudents);
+        setRecords(
+          courseStudents.map((student) => ({
+            enrollment: student.enrollment_id,
+            status: student.status || "P",
+          }))
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
     load();
-  }, [id]);
+  }, [id, token, logout]);
 
   const toggle = (enrollment, status) => {
     setRecords((prev) => {
@@ -49,87 +53,130 @@ function AttendancePage() {
     alert("Attendance Saved!");
   };
 
-  const sortedStudents = [...students].sort(
-    (a, b) => a.roll_no - b.roll_no
-  );
-
-  const handleStatusChange = (studentId, status) => {
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.student_id === studentId ? { ...s, status } : s
-      )
-    );
+  const handleStatusChange = (enrollmentId, status) => {
+    toggle(enrollmentId, status);
   };
 
+  const sortedStudents = [...students].sort((a, b) =>
+    String(a.roll_no).localeCompare(String(b.roll_no), undefined, { numeric: true })
+  );
+
+  const getStatus = (enrollmentId) => {
+    const record = records.find((item) => item.enrollment === enrollmentId);
+    return record?.status || "P";
+  };
+
+  const presentCount = records.filter((record) => record.status === "P").length;
+  const lateCount = records.filter((record) => record.status === "L").length;
+  const absentCount = records.filter((record) => record.status === "A").length;
+
   return (
-    <div style={{ padding: 20 }}>
-      <h2>📝 Attendance</h2>
+    <div className="app-page stack">
+      <header className="surface" style={{ padding: 24 }}>
+        <div className="page-title">
+          <div className="page-kicker">Take attendance</div>
+          <h1>Record today&apos;s session</h1>
+          <p className="page-subtitle">
+            Set the date, mark the status for each student, and save when you are done.
+          </p>
+        </div>
 
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-      />
+        <div className="metric-grid" style={{ marginTop: 18 }}>
+          <div className="metric-card">
+            <div className="metric-label">Present</div>
+            <div className="metric-value">{presentCount}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Late</div>
+            <div className="metric-value">{lateCount}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Absent</div>
+            <div className="metric-value">{absentCount}</div>
+          </div>
+        </div>
+      </header>
 
-      <table border="1" style={{ width: "100%", marginTop: 20 }}>
-        <thead>
-          <tr>
-            <th>Roll no</th>
-            <th>Name</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+      <section className="card stack">
+        <label className="field-label" style={{ maxWidth: 260 }}>
+          Session date
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
 
-       
-        <tbody>
-        {[...students]
-            .sort((a, b) => a.roll_no - b.roll_no)
-            .map((student) => (
-            <tr key={student.student_id}>
-                <td>{student.roll_no}</td>
-                <td>{student.student_name}</td>
-                <td>
-                    <label>
-                        <input
-                        type="radio"
-                        name={`attendance-${student.student_id}`}
-                        value="P"
-                        checked={student.status === "P"}
-                        onChange={() => handleStatusChange(student.student_id, "P")}
-                        />
-                        Present
-                    </label>
+        {loading ? (
+          <div className="empty-state">Loading students...</div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll no</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedStudents.map((student) => {
+                  const status = getStatus(student.enrollment_id);
 
-                    <label style={{ marginLeft: "10px" }}>
-                        <input
-                        type="radio"
-                        name={`attendance-${student.student_id}`}
-                        value="A"
-                        checked={student.status === "A"}
-                        onChange={() => handleStatusChange(student.student_id, "A")}
-                        />
-                        Absent
-                    </label>
+                  return (
+                    <tr key={student.student_id}>
+                      <td>{student.roll_no}</td>
+                      <td>{student.student_name}</td>
+                      <td>
+                        <div className="status-options">
+                          <label className={`status-option ${status === "P" ? "is-active" : ""}`}>
+                            <input
+                              type="radio"
+                              name={`attendance-${student.student_id}`}
+                              value="P"
+                              checked={status === "P"}
+                              onChange={() => handleStatusChange(student.enrollment_id, "P")}
+                            />
+                            Present
+                          </label>
 
-                    <label style={{ marginLeft: "10px" }}>
-                        <input
-                        type="radio"
-                        name={`attendance-${student.student_id}`}
-                        value="L"
-                        checked={student.status === "L"}
-                        onChange={() => handleStatusChange(student.student_id, "L")}
-                        />
-                        Late
-                    </label>
-                    </td>
-            </tr>
-            ))}
-        </tbody>
-      </table>
+                          <label className={`status-option ${status === "A" ? "is-active" : ""}`}>
+                            <input
+                              type="radio"
+                              name={`attendance-${student.student_id}`}
+                              value="A"
+                              checked={status === "A"}
+                              onChange={() => handleStatusChange(student.enrollment_id, "A")}
+                            />
+                            Absent
+                          </label>
 
-      <button onClick={submit} style={{ marginTop: 20 }}>
-        💾 Save Attendance
-      </button>
+                          <label className={`status-option ${status === "L" ? "is-active" : ""}`}>
+                            <input
+                              type="radio"
+                              name={`attendance-${student.student_id}`}
+                              value="L"
+                              checked={status === "L"}
+                              onChange={() => handleStatusChange(student.enrollment_id, "L")}
+                            />
+                            Late
+                          </label>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="button-row">
+          <button onClick={submit} disabled={loading || records.length === 0}>
+            Save attendance
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

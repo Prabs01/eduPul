@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
+import pulchowkLogo from "../assets/pulchowkLogo.jpeg";
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ IMPORTANT
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     username: "",
@@ -53,50 +54,72 @@ function Login() {
   };
 
   return (
-    <div style={styles.container}>
-      <h2>Login</h2>
+    <div className="app-page hero-shell">
+      <section className="hero-panel register-hero">
+        <div className="register-hero-image-wrap">
+          <img
+            src={pulchowkLogo}
+            alt="Pulchowk Campus official logo"
+            className="register-hero-image"
+          />
+        </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          name="username"
-          placeholder="Username"
-          onChange={handleChange}
-          required
-        />
+        <div className="stack">
+          <div className="eyebrow">EduPul</div>
+          <div className="hero-copy">
+            <h1>Academic operations in one calm workspace.</h1>
+            <p>
+              Access your role-specific dashboard, review attendance, and keep
+              the academic flow organized without bouncing between screens.
+            </p>
+          </div>
+        </div>
+      </section>
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">Sign in</div>
+          <h2>Welcome back</h2>
+          <p className="page-subtitle">
+            Log in to continue to your EduPul dashboard.
+          </p>
+        </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="form-stack">
+          <label className="field-label">
+            Username
+            <input
+              name="username"
+              placeholder="Enter your username"
+              onChange={handleChange}
+              required
+            />
+          </label>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+          <label className="field-label">
+            Password
+            <input
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              onChange={handleChange}
+              required
+            />
+          </label>
 
-      <p>
-        Don't have an account? <Link to="/register">Register</Link>
-      </p>
+          <button type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+
+        {error && <p className="muted" style={{ color: "var(--danger)" }}>{error}</p>}
+
+        <p className="muted">
+          Don&apos;t have an account? <Link to="/register">Register</Link>
+        </p>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    width: "300px",
-    margin: "100px auto",
-    textAlign: "center",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
-};
 
 export default Login;

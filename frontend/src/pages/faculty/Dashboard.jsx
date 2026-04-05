@@ -35,89 +35,96 @@ function FacultyDashboard() {
   if (loading) return <p>Loading...</p>;
 
   const faculty = profile?.faculty;
+  const courseCount = courses.length;
 
   return (
-    <div style={styles.container}>
-      <h1>👨‍🏫 Faculty Dashboard</h1>
+    <div className="app-page stack">
+      <header className="page-header surface" style={{ padding: 24 }}>
+        <div className="page-title">
+          <div className="page-kicker">Faculty dashboard</div>
+          <h1>Plan classes with less friction.</h1>
+          <p className="page-subtitle">
+            Review your assigned offerings, open a course, and take attendance from the same workspace.
+          </p>
+        </div>
 
-      {/* PROFILE */}
-      <div style={styles.card}>
-        <h3>👤 My Account</h3>
-        <p><b>Username:</b> {profile.username}</p>
-        <p><b>Name:</b> {faculty?.name}</p>
-        <p><b>Email:</b> {faculty?.email}</p>
-      </div>
+        <div className="metric-grid" style={{ minWidth: "min(100%, 420px)" }}>
+          <div className="metric-card">
+            <div className="metric-label">Assigned courses</div>
+            <div className="metric-value">{courseCount}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Faculty member</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{faculty?.name || profile?.username}</div>
+          </div>
+        </div>
+      </header>
 
-      {/* COURSES */}
-      <div style={styles.box}>
-        <h3>📘 My Course Offerings</h3>
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">My account</div>
+          <h2>Profile</h2>
+        </div>
+
+        <div className="metric-grid">
+          <div className="metric-card">
+            <div className="metric-label">Username</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{profile?.username}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Email</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{faculty?.email}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Department</div>
+            <div className="metric-value" style={{ fontSize: "1.1rem" }}>{faculty?.department}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">Course offerings</div>
+          <h2>Assigned classes</h2>
+        </div>
 
         {courses.length === 0 ? (
-          <p>No courses assigned</p>
+          <div className="empty-state">No courses assigned.</div>
         ) : (
-          courses.map((c) => (
-            <div key={c.id} style={styles.courseCard}>
-              <div>
-                <b>{c.course_title}</b>
-                <p>
-                  {c.program} | Sem {c.semester} | {c.section}
-                </p>
-              </div>
+          <div className="course-grid">
+            {courses.map((course) => (
+              <div key={course.id} className="course-card">
+                <div className="course-meta">
+                  <strong>{course.course_title}</strong>
+                  <span className="muted">
+                    {course.program} | Sem {course.semester} | Section {course.section}
+                  </span>
+                  <div className="chip-row">
+                    <span className="chip">{course.course_code || "Course"}</span>
+                  </div>
+                </div>
 
-              <div style={styles.actions}>
-                <button
-                  onClick={() =>
-                    navigate(`/faculty/course/${c.id}`)
-                  }
-                >
-                  Open
-                </button>
+                <div className="button-row">
+                  <button
+                    onClick={() => navigate(`/faculty/course/${course.id}`)}
+                  >
+                    Open
+                  </button>
 
-                <button
-                  onClick={() =>
-                    navigate(`/faculty/course/${c.id}/attendance`)
-                  }
-                >
-                  Attendance
-                </button>
+                  <button
+                    className="button-secondary"
+                    onClick={() => navigate(`/faculty/course/${course.id}/attendance`)}
+                  >
+                    Attendance
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: { padding: "20px" },
-
-  card: {
-    background: "#f5f5f5",
-    padding: "15px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-  },
-
-  box: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "10px",
-  },
-
-  courseCard: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "10px",
-    marginBottom: "10px",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-  },
-
-  actions: {
-    display: "flex",
-    gap: "10px",
-  },
-};
 
 export default FacultyDashboard;
