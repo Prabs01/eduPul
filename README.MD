@@ -52,6 +52,8 @@ source .venv/bin/activate   # Mac/Linux
 pip install -r requirements.txt
 ```
 
+By default the backend uses SQLite for local development, so you can run migrations without a PostgreSQL server. To use PostgreSQL instead, set `DATABASE_ENGINE=postgresql` and the `POSTGRES_*` environment variables before running Django commands.
+
 ### 4. Run migrations
 ```bash 
 python manage.py makemigrations

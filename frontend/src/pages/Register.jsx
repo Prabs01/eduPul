@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/auth";
-import { useAuth } from "../context/AuthContext";
+import pulchowkLogo from "../assets/pulchowkLogo.jpeg";
 
 function Register() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ important
 
   const [form, setForm] = useState({
     username: "",
+    email: "",
     password: "",
     role: "STUDENT",
   });
@@ -26,15 +26,8 @@ function Register() {
     setError("");
 
     try {
-      const data = await registerUser(form);
-  
-      login(data);
-
-      const role = data.user?.role;
-
-      if (role === "STUDENT") navigate("/student/dashboard");
-      else if (role === "FACULTY") navigate("/faculty/dashboard");
-      else navigate("/");
+      await registerUser(form);
+      navigate("/", { replace: true });
 
     } catch (err) {
       setError(
@@ -48,55 +41,91 @@ function Register() {
   };
 
   return (
-    <div style={styles.container}>
-      <h2>Register</h2>
+    <div className="app-page hero-shell">
+      <section className="hero-panel register-hero">
+        <div className="register-hero-image-wrap">
+          <img
+            src={pulchowkLogo}
+            alt="Pulchowk Campus official logo"
+            className="register-hero-image"
+          />
+        </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          name="username"
-          placeholder="Username"
-          onChange={handleChange}
-          required
-        />
+        <div className="stack">
+          <div className="eyebrow">Get started</div>
+          <div className="hero-copy">
+            <h1>Create your EduPul account.</h1>
+            <p>
+              Join as a student or faculty member and get immediate access to
+              the workflows built for your role.
+            </p>
+          </div>
+        </div>
+      </section>
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">Create account</div>
+          <h2>Join EduPul</h2>
+          <p className="page-subtitle">
+            Pick a role and finish registration in a few steps.
+          </p>
+        </div>
 
-        <select name="role" onChange={handleChange} value={form.role}>
-          <option value="STUDENT">Student</option>
-          <option value="FACULTY">Faculty</option>
-        </select>
+        <form onSubmit={handleSubmit} className="form-stack">
+          <label className="field-label">
+            Username
+            <input
+              name="username"
+              placeholder="Choose a username"
+              onChange={handleChange}
+              required
+            />
+          </label>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Registering..." : "Register"}
-        </button>
-      </form>
+          <label className="field-label">
+            Email
+            <input
+              name="email"
+              type="email"
+              placeholder="name@domain.com"
+              onChange={handleChange}
+              required
+            />
+          </label>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+          <label className="field-label">
+            Password
+            <input
+              name="password"
+              type="password"
+              placeholder="Create a password"
+              onChange={handleChange}
+              required
+            />
+          </label>
 
-      <p>
-        Already have an account? <Link to="/">Login</Link>
-      </p>
+          <label className="field-label">
+            Role
+            <select name="role" onChange={handleChange} value={form.role}>
+              <option value="STUDENT">Student</option>
+              <option value="FACULTY">Faculty</option>
+            </select>
+          </label>
+
+          <button type="submit" disabled={loading}>
+            {loading ? "Registering..." : "Register"}
+          </button>
+        </form>
+
+        {error && <p className="muted" style={{ color: "var(--danger)" }}>{error}</p>}
+
+        <p className="muted">
+          Already have an account? <Link to="/">Login</Link>
+        </p>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    width: "300px",
-    margin: "100px auto",
-    textAlign: "center",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
-};
 
 export default Register;

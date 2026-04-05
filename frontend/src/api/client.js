@@ -1,5 +1,18 @@
 const BASE_URL = "http://127.0.0.1:8000/api";
 
+const parseResponse = async (response) => {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  throw new Error(
+    `HTTP ${response.status}: ${text.slice(0, 200) || "Unexpected non-JSON response"}`
+  );
+};
+
 export const apiRequest = async (endpoint, method = "GET", data = null) => {
   const token = localStorage.getItem("token");
 
@@ -16,7 +29,22 @@ export const apiRequest = async (endpoint, method = "GET", data = null) => {
   }
 
   const response = await fetch(`${BASE_URL}/${endpoint}`, options);
-  return response.json();
+
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const payload = await response.json();
+      throw new Error(payload.detail || JSON.stringify(payload));
+    }
+
+    const text = await response.text();
+    throw new Error(
+      `HTTP ${response.status}: ${text.slice(0, 200) || "Unexpected non-JSON response"}`
+    );
+  }
+
+  return parseResponse(response);
 };
 
 export const fetchWithAuth = async (
@@ -41,8 +69,18 @@ export const fetchWithAuth = async (
   }
 
   if (!response.ok) {
-    throw new Error("API error");
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const payload = await response.json();
+      throw new Error(payload.detail || JSON.stringify(payload));
+    }
+
+    const text = await response.text();
+    throw new Error(
+      `HTTP ${response.status}: ${text.slice(0, 200) || "Unexpected non-JSON response"}`
+    );
   }
 
-  return response.json();
+  return parseResponse(response);
 };

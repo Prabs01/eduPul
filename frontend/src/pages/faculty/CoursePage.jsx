@@ -21,33 +21,39 @@ function CoursePage() {
   if (!course) return <p>Loading...</p>;
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>📘 {course.course_title}</h2>
+    <div className="app-page stack">
+      <header className="surface" style={{ padding: 24 }}>
+        <div className="page-title">
+          <div className="page-kicker">Course workspace</div>
+          <h1>{course.course_title}</h1>
+          <p className="page-subtitle">
+            {course.program} | Semester {course.semester} | Section {course.section}
+          </p>
+        </div>
 
-      <div style={{ marginTop: 20 }}>
-        <button onClick={() => navigate("attendance")}>
-          📝 Take Attendance
-        </button>
+        <div className="chip-row" style={{ marginTop: 16 }}>
+          <span className="chip">Open course</span>
+          <span className="chip">Attendance</span>
+          <span className="chip">History</span>
+        </div>
+      </header>
 
-        <button
-          onClick={() => navigate("attendance")}
-          style={{ marginLeft: 10 }}
-        >
-          ✏️ Edit Attendance
-        </button>
+      <section className="card stack">
+        <div className="page-title">
+          <div className="page-kicker">Actions</div>
+          <h2>What do you want to do?</h2>
+        </div>
 
-        <button
-          onClick={() => navigate("reports")}
-          style={{ marginLeft: 10 }}
-        >
-          📊 Reports
-        </button>
+        <div className="button-row">
+          <button onClick={() => navigate("attendance")}>Take attendance</button>
 
-        <button
-            onClick={() => navigate("attendance/history")}
-            style={{ marginLeft: 10 }}
-        >Attendance History</button>
-      </div>
+          <button className="button-secondary" onClick={() => navigate("attendance")}>Edit attendance</button>
+
+          <button className="button-secondary" onClick={() => navigate("reports")}>Reports</button>
+
+          <button className="button-ghost" onClick={() => navigate("attendance/history")}>Attendance history</button>
+        </div>
+      </section>
     </div>
   );
 }
