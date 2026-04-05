@@ -7,12 +7,13 @@ from rest_framework.views import APIView
 from .serializers import DepartmentSerializer, ProgramSerializer, CourseSerializer,CourseOfferingSerializer, CourseEnrollmentSerializer, StudentSerializer, FacultySerializer, TeachingAssignmentSerializer
 from . import serializers
 from .models import Department,Program, Course, CourseOffering, CourseEnrollment, TeachingAssignment, Student, Faculty, Attendance
-from accounts.permissions import IsAdminOrReadOnly, IsStudentOrReadOnly
+from accounts.permissions import IsAdminOrReadOnly, IsStudentOrReadOnly, IsAssignedFaculty
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Count, Q  
+from django.db import transaction
 
 
 # Create your views here.
@@ -33,11 +34,70 @@ class CourseViewSet(ModelViewSet):
     serializer_class = CourseSerializer
     permission_classes = [IsAdminOrReadOnly]
 
-
 class CourseOfferingViewSet(ModelViewSet):
     queryset = CourseOffering.objects.all()
     serializer_class = CourseOfferingSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    
+    def get_queryset(self):
+        user = self.request.user
+
+        # Admin sees everything
+        if user.role == "ADMIN":
+            return CourseOffering.objects.all()
+
+        # Faculty sees only assigned courses
+        if user.role == "FACULTY":
+            return CourseOffering.objects.filter(
+                teachingassignment__faculty__user=user
+            ).distinct()
+
+        # Students (optional later)
+        if user.role == "STUDENT":
+            return CourseOffering.objects.filter(
+                courseenrollment__student__user=user
+            ).distinct()
+
+        return CourseOffering.objects.none()
+
+    def get_permissions(self):
+        print(f"Action: {self.action}, User: {self.request.user}")
+        if self.action == "retrieve":
+            return [IsAssignedFaculty()]
+        return [IsAdminOrReadOnly()]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        serializer = CourseOfferingSerializer(instance)
+        data = serializer.data
+
+        # attach attendance summary
+        data["attendance_summary"] = self.get_attendance_summary(instance)
+
+        return Response(data)
+
+    def get_attendance_summary(self, offering):
+        enrollments = CourseEnrollment.objects.filter(offering=offering)
+
+        result = []
+
+        for e in enrollments:
+            records = Attendance.objects.filter(enrollment=e)
+
+            present = records.filter(status="P").count()
+            absent = records.filter(status="A").count()
+            late = records.filter(status="L").count()
+            total = records.count()
+
+            result.append({
+                "student_name": e.student.name,
+                "present": present,
+                "absent": absent,
+                "late": late,
+                "percentage": round((present / total) * 100, 2) if total else 0
+            })
+
+        return result
 
 
 class CourseEnrollmentViewSet(ModelViewSet):
@@ -97,34 +157,91 @@ class AttendanceViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return serializers.AttendanceBulkSerializer
+        if self.action == "mark":
+            return serializers.AttendanceMarkSerializer
         else:
             return serializers.AttendanceSerializer
 
-    def perform_create(self, serializer):
-        user = self.request.user
+    @action(detail=False, methods=["post"])
+    def mark(self, request):
+        serializer = serializers.AttendanceMarkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
 
         if user.role != "FACULTY":
-            raise PermissionDenied("Only faculty can record attendance.")
-        
+            raise PermissionDenied("Only faculty can mark attendance.")
 
-        records = self.request.data.get("records", [])
-        date = serializer.validated_data.get("date")
-        offering = self.request.data.get("offering")
+        offering_id = serializer.validated_data["offering"]
+        date = serializer.validated_data["date"]
+        records = serializer.validated_data["records"]
 
-        if not TeachingAssignment.objects.filter(faculty=user.faculty, offering=offering).exists():
-            raise PermissionDenied("You can only record attendance for courses you are teaching.")
-        
-        if Attendance.objects.filter(enrollment__offering_id=offering, date=date).exists():
+        # check faculty owns course
+        if not TeachingAssignment.objects.filter(
+            faculty=user.faculty,
+            offering_id=offering_id
+        ).exists():
+            raise PermissionDenied("Not assigned to this course.")
+
+        # prevent duplicate marking
+        if Attendance.objects.filter(
+            enrollment__offering_id=offering_id,
+            date=date
+        ).exists():
             raise PermissionDenied("Attendance already marked for this date.")
         
-        for record in records:
-            Attendance.objects.create(
-                enrollment_id=record["enrollment"],
-                date=date,
-                status=record["status"]
-            )
+
+        with transaction.atomic():
+            for record in records:
+
+                enrollment_exists = CourseEnrollment.objects.filter(
+                    id=record["enrollment"],
+                    offering_id=offering_id
+                ).exists()
+
+                if not enrollment_exists:
+                    raise PermissionDenied("Invalid enrollment for this course.")
+
+                Attendance.objects.create(
+                    enrollment_id=record["enrollment"],
+                    date=date,
+                    status=record["status"]
+                )
+
+        return Response({"message": "Attendance marked successfully"})
+    
+    @action(detail=False, methods=["put"])
+    def edit(self, request):
+        serializer = serializers.AttendanceMarkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if user.role != "FACULTY":
+            raise PermissionDenied("Only faculty can edit attendance.")
+
+        offering_id = serializer.validated_data["offering"]
+        date = serializer.validated_data["date"]
+        records = serializer.validated_data["records"]
+
+        # check faculty owns course
+        if not TeachingAssignment.objects.filter(
+            faculty=user.faculty,
+            offering_id=offering_id
+        ).exists():
+            raise PermissionDenied("Not assigned to this course.")
+
+        with transaction.atomic():
+            for record in records:
+                Attendance.objects.update_or_create(
+                    enrollment_id=record["enrollment"],
+                    date=date,
+                    defaults={
+                        "status": record["status"]
+                    }
+                )
+
+        return Response({"message": "Attendance updated successfully"})
 
     def get_queryset(self):
         user = self.request.user
@@ -138,6 +255,40 @@ class AttendanceViewSet(ModelViewSet):
         else:
             return Attendance.objects.all()
         
+    @action(detail=False, methods=["get"])
+    def by_date(self, request):
+        offering_id = request.query_params.get("offering")
+        date = request.query_params.get("date")
+
+        records = Attendance.objects.filter(
+            enrollment__offering_id=offering_id,
+            date=date
+        ).select_related("enrollment__student")
+
+        data = [
+            {
+                "student_id": r.enrollment.student.id,
+                "student_name": r.enrollment.student.name,
+                "roll_no": r.enrollment.student.roll_no,
+                "status": r.status,
+            }
+            for r in records
+        ]
+
+        return Response(data)
+    
+    @action(detail=False, methods=["get"])
+    def dates(self, request):
+        offering_id = request.query_params.get("offering")
+
+        records = Attendance.objects.filter(
+            enrollment__offering_id=offering_id
+        ).values("date").distinct()
+
+        dates = [r["date"] for r in records]
+
+        return Response(dates)
+            
     @action(detail=False, methods=["get"])
     def summary(self, request):
         queryset = self.get_queryset()

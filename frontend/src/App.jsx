@@ -11,6 +11,11 @@ import RoleRoute from "./routes/RoleRoute";
 import StudentDashboard from "./pages/student/Dashboard";
 import FacultyDashboard from "./pages/faculty/Dashboard";
 
+import AttendancePage from "./pages/faculty/AttendancePage";
+import CoursePage from "./pages/faculty/CoursePage";
+
+import AttendanceHistory from "./pages/faculty/AttendanceHistory";
+
 function App() {
   return (
     <BrowserRouter>
@@ -39,6 +44,34 @@ function App() {
             </RoleRoute>
           }
         />
+
+        {/* FACULTY COURSE PAGES */}
+        <Route
+          path="/faculty/course/:id"
+          element={
+            <RoleRoute allowedRoles={["FACULTY"]}>
+              <CoursePage />
+            </RoleRoute>
+          }/>
+
+          {/* ATTENDANCE PAGE (FACULTY) */}
+        <Route
+          path="/faculty/course/:id/attendance"
+          element={
+            <RoleRoute allowedRoles={["FACULTY"]}>
+              <AttendancePage />
+            </RoleRoute>
+          }/>
+
+          {/* ATTENDANCE HISTORY (FACULTY) */}
+        <Route
+          path = "/faculty/course/:id/attendance/history"
+          element={
+            <RoleRoute allowedRoles={["FACULTY"]}>
+              <AttendanceHistory />
+            </RoleRoute>
+          }/>
+
       </Routes>
     </BrowserRouter>
   );

@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from .serializers import RegisterSerializer, CustomTokenObtainPairSerializer
 from .models import User
+from academics.models import Student, Faculty, TeachingAssignment, CourseEnrollment
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,11 +31,65 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
-        return Response({
+
+        data = {
+            "id": user.id,
             "username": user.username,
-            "email": user.email,
-            "role": user.role
-        })
+            "role": user.role,
+        }
+
+        # 🔹 STUDENT
+        if user.role == "STUDENT":
+            try:
+                student = Student.objects.select_related("program").get(user=user)
+
+                enrollments = CourseEnrollment.objects.filter(
+                    student=student
+                ).select_related("offering__course")
+
+                data["student"] = {
+                    "name": student.name,
+                    "email": student.email,
+                    "program": student.program.name if student.program else None,
+                    "enrollments": [
+                        {
+                            "id": e.id,
+                            "course": e.offering.course.title,
+                            "semester": e.offering.semester,
+                        }
+                        for e in enrollments
+                    ]
+                }
+
+            except Student.DoesNotExist:
+                data["student"] = None
+
+        # 🔹 FACULTY
+        elif user.role == "FACULTY":
+            try:
+                faculty = Faculty.objects.get(user=user)
+
+                assignments = TeachingAssignment.objects.filter(
+                    faculty=faculty
+                ).select_related("offering__course")
+
+                data["faculty"] = {
+                    "name": faculty.name,
+                    "email": faculty.email,
+                    "assignments": [
+                        {
+                            "id": a.id,
+                            "course": a.offering.course.title,
+                            "semester": a.offering.semester,
+                        }
+                        for a in assignments
+                    ]
+                }
+
+            except Faculty.DoesNotExist:
+                data["faculty"] = None
+
+        return Response(data)
     
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

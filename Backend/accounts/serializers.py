@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
-from academics.models import Student, Faculty
+from academics.models import Student, Faculty, TeachingAssignment, CourseEnrollment
+from academics.serializers import EnrollmentSimpleSerializer
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -26,37 +27,54 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
+        user_data = None
 
-        # attach user dynamically
-        user = None
-
+        # 🔹 STUDENT
         if self.user.role == "STUDENT":
             try:
-                s = Student.objects.get(user=self.user)
-                user = {
-                    "id": s.id,
-                    "roll_no": s.roll_no,
-                    "name": s.name,
-                    "email": s.email,
+                student = Student.objects.select_related("program").get(user=self.user)
+
+                enrollments = CourseEnrollment.objects.filter(
+                    student=student
+                ).select_related("offering__course")
+
+                user_data = {
+                    "id": student.id,
+                    "name": student.name,
+                    "email": student.email,
                     "role": "STUDENT",
+                    "program": student.program.name if student.program else None,
+                    "enrollments": EnrollmentSimpleSerializer(enrollments, many=True).data
                 }
+
             except Student.DoesNotExist:
-                user = None
+                user_data = None
 
-        elif user == "FACULTY":
+        # 🔹 FACULTY
+        elif self.user.role == "FACULTY":
             try:
-                f = Faculty.objects.get(user=self.user)
-                user = {
-                    "id": f.id,
-                    "name": f.name,
-                    "email": f.email,
+                faculty = Faculty.objects.get(user=self.user)
+
+                assignments = TeachingAssignment.objects.filter(
+                    faculty=faculty
+                ).select_related("offering__course")
+
+                user_data = {
+                    "id": faculty.id,
+                    "name": faculty.name,
+                    "email": faculty.email,
                     "role": "FACULTY",
+                    "assignments": [
+                        {
+                            "course": a.offering.course.title,
+                            "semester": a.offering.semester
+                        }
+                        for a in assignments
+                    ]
                 }
+
             except Faculty.DoesNotExist:
-                user = None
+                user_data = None
 
-        data["user"] = user
-
+        data["user"] = user_data
         return data
-    
-

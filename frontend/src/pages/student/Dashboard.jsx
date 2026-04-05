@@ -1,56 +1,105 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { fetchWithAuth } from "../../api/client";
 
 function StudentDashboard() {
-  const { user, token } = useAuth();
+  const { token, logout } = useAuth();
+
+  const [profile, setProfile] = useState(null);
+  const [attendanceSummary, setAttendanceSummary] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // later we will fetch backend data here
-    setLoading(false);
-  }, []);
+    const loadData = async () => {
+      try {
+        // 🔹 fetch profile
+        const profileData = await fetchWithAuth(
+          "/auth/me/",
+          token,
+          logout
+        );
 
-  if (loading) return <p>Loading dashboard...</p>;
+        setProfile(profileData);
+
+        // 🔹 fetch attendance summary
+        const attendanceData = await fetchWithAuth(
+          "/academics/attendances/summary/",
+          token,
+          logout
+        );
+
+        setAttendanceSummary(attendanceData);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [token]);
+
+  if (loading) return <p>Loading...</p>;
+
+  const student = profile?.student;
 
   return (
     <div style={styles.container}>
       <h1>Student Dashboard</h1>
 
+      {/* ACCOUNT */}
       <div style={styles.card}>
-        <h3>Welcome 👋</h3>
-        <p><b>Name:</b> {user?.username}</p>
-        <p><b>Role:</b> {user?.role}</p>
+        <h3>👤 My Account</h3>
+        <p><b>Username:</b> {profile?.username}</p>
+        <p><b>Name:</b> {student?.name}</p>
+        <p><b>Email:</b> {student?.email}</p>
+        <p><b>Program:</b> {student?.program}</p>
       </div>
 
-      <div style={styles.grid}>
-        <div style={styles.box}>
-          <h3>📚 Courses</h3>
-          <p>Coming soon...</p>
-        </div>
+      {/* COURSES */}
+      <div style={styles.box}>
+        <h3>📚 My Courses</h3>
 
-        <div style={styles.box}>
-          <h3>📊 Attendance</h3>
-          <p>Coming soon...</p>
-        </div>
+        {student?.enrollments?.length > 0 ? (
+          student.enrollments.map((e) => (
+            <div key={e.id}>
+              <p>
+                {e.course} — {e.semester}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p>No enrollments</p>
+        )}
+      </div>
 
-        <div style={styles.box}>
-          <h3>📝 Assignments</h3>
-          <p>Coming soon...</p>
-        </div>
+      {/* ATTENDANCE SUMMARY */}
+      <div style={styles.box}>
+        <h3>📊 Attendance Summary</h3>
 
-        <div style={styles.box}>
-          <h3>📈 Performance</h3>
-          <p>Coming soon...</p>
-        </div>
+        {attendanceSummary.length > 0 ? (
+          attendanceSummary.map((item) => (
+            <div key={item.offering} style={styles.attCard}>
+              <p><b>{item.course_title}</b></p>
+
+              <p>Present: {item.present}</p>
+              <p>Late: {item.late}</p>
+              <p>Absent: {item.absent}</p>
+              <p>Total: {item.total}</p>
+
+              <h4>Attendance: {item.percentage}%</h4>
+            </div>
+          ))
+        ) : (
+          <p>No attendance data</p>
+        )}
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    padding: "20px",
-  },
+  container: { padding: "20px" },
 
   card: {
     background: "#f5f5f5",
@@ -59,17 +108,18 @@ const styles = {
     marginBottom: "20px",
   },
 
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
   box: {
     background: "#fff",
     padding: "20px",
     borderRadius: "10px",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    marginBottom: "20px",
+  },
+
+  attCard: {
+    background: "#f2f2f2",
+    padding: "12px",
+    marginBottom: "10px",
+    borderRadius: "8px",
   },
 };
 

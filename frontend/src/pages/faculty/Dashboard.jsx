@@ -1,58 +1,96 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { fetchWithAuth } from "../../api/client";
+import { getMyCourses } from "../../api/faculty";
+import { useNavigate } from "react-router-dom";
 
 function FacultyDashboard() {
-  const { user } = useAuth();
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const [profile, setProfile] = useState(null);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // later we will fetch faculty-specific data here
-    setLoading(false);
-  }, []);
+    const load = async () => {
+      try {
+        const [profileData, courseData] = await Promise.all([
+          fetchWithAuth("/auth/me/", token, logout),
+          getMyCourses(token, logout),
+        ]);
 
-  if (loading) return <p>Loading dashboard...</p>;
+        setProfile(profileData);
+        setCourses(courseData);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [token]);
+
+  if (loading) return <p>Loading...</p>;
+
+  const faculty = profile?.faculty;
 
   return (
     <div style={styles.container}>
-      <h1>Faculty Dashboard</h1>
+      <h1>👨‍🏫 Faculty Dashboard</h1>
 
-      {/* Profile Card */}
+      {/* PROFILE */}
       <div style={styles.card}>
-        <h3>Welcome 👨‍🏫</h3>
-        <p><b>Name:</b> {user?.username}</p>
-        <p><b>Role:</b> {user?.role}</p>
+        <h3>👤 My Account</h3>
+        <p><b>Username:</b> {profile.username}</p>
+        <p><b>Name:</b> {faculty?.name}</p>
+        <p><b>Email:</b> {faculty?.email}</p>
       </div>
 
-      {/* Quick Stats Grid */}
-      <div style={styles.grid}>
-        <div style={styles.box}>
-          <h3>📘 My Courses</h3>
-          <p>Coming soon...</p>
-        </div>
+      {/* COURSES */}
+      <div style={styles.box}>
+        <h3>📘 My Course Offerings</h3>
 
-        <div style={styles.box}>
-          <h3>🧑‍🎓 Students</h3>
-          <p>Coming soon...</p>
-        </div>
+        {courses.length === 0 ? (
+          <p>No courses assigned</p>
+        ) : (
+          courses.map((c) => (
+            <div key={c.id} style={styles.courseCard}>
+              <div>
+                <b>{c.course_title}</b>
+                <p>
+                  {c.program} | Sem {c.semester} | {c.section}
+                </p>
+              </div>
 
-        <div style={styles.box}>
-          <h3>📋 Attendance</h3>
-          <p>Mark & View Attendance</p>
-        </div>
+              <div style={styles.actions}>
+                <button
+                  onClick={() =>
+                    navigate(`/faculty/course/${c.id}`)
+                  }
+                >
+                  Open
+                </button>
 
-        <div style={styles.box}>
-          <h3>📝 Assignments</h3>
-          <p>Create & Manage</p>
-        </div>
+                <button
+                  onClick={() =>
+                    navigate(`/faculty/course/${c.id}/attendance`)
+                  }
+                >
+                  Attendance
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    padding: "20px",
-  },
+  container: { padding: "20px" },
 
   card: {
     background: "#f5f5f5",
@@ -61,17 +99,24 @@ const styles = {
     marginBottom: "20px",
   },
 
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
   box: {
     background: "#fff",
     padding: "20px",
     borderRadius: "10px",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+  },
+
+  courseCard: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "10px",
+    marginBottom: "10px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+  },
+
+  actions: {
+    display: "flex",
+    gap: "10px",
   },
 };
 
