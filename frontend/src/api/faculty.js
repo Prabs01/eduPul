@@ -28,7 +28,7 @@ export const getAttendanceByDate = (offeringId, date, token, logout) =>
   fetchWithAuth(`/academics/attendances/?offering=${offeringId}&date=${date}`, token, logout);
 
 export const getAttendanceDates = (offeringId, token, logout) =>
-  fetchWithAuth(`/academics/attendance/dates/?offering=${offeringId}`, token, logout);
+  fetchWithAuth(`/academics/attendances/dates/?offering=${offeringId}`, token, logout);
 
 export const getAttendanceSummary = (id, token, logout) =>
   fetchWithAuth(`/academics/attendances/summary?offering=${id}`, token, logout);

@@ -59,9 +59,16 @@ function App() {
           path="/faculty/course/:id/attendance"
           element={
             <RoleRoute allowedRoles={["FACULTY"]}>
-              <AttendancePage />
+              <AttendancePage  mode ="edit"/>
             </RoleRoute>
           }/>
+
+          <Route
+            path="/faculty/course/:id/attendance/view/:date"
+            element={<RoleRoute allowedRoles={["FACULTY"]}>
+            <AttendancePage  mode ="view"/>
+          </RoleRoute>}
+            />
 
           {/* ATTENDANCE HISTORY (FACULTY) */}
         <Route

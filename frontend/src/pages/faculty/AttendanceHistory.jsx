@@ -15,7 +15,7 @@ function AttendanceHistory() {
     const load = async () => {
       try {
         const data = await fetchWithAuth(
-          `/academics/attendance/dates/?offering=${id}`,
+          `/academics/attendances/dates/?offering=${id}`,
           token,
           logout
         );
@@ -54,7 +54,7 @@ return (
         return (
           <div
             key={date}
-            onClick={() => navigate(`/faculty/course/${id}/attendance?date=${date}`)}
+            onClick={() => navigate(`/faculty/course/${id}/attendance/view/${date}`)}
             style={{
               ...styles.cell,
               backgroundColor: marked ? "#b6f5c2" : "#f8b6b6",

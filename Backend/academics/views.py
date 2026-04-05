@@ -169,12 +169,16 @@ class AttendanceViewSet(ModelViewSet):
 
         user = request.user
 
+        print(f"Marking attendance: User={user}, role={user.role}, data={serializer.validated_data}")
+
         if user.role != "FACULTY":
             raise PermissionDenied("Only faculty can mark attendance.")
 
         offering_id = serializer.validated_data["offering"]
         date = serializer.validated_data["date"]
         records = serializer.validated_data["records"]
+
+        print(f"Marking attendance for offering {offering_id} on {date} with records: {records}")
 
         # check faculty owns course
         if not TeachingAssignment.objects.filter(
@@ -200,6 +204,7 @@ class AttendanceViewSet(ModelViewSet):
                 ).exists()
 
                 if not enrollment_exists:
+                    print(f"Invalid enrollment ID {record['enrollment']} for offering {offering_id}")
                     raise PermissionDenied("Invalid enrollment for this course.")
 
                 Attendance.objects.create(
